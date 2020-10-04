@@ -1,11 +1,24 @@
 default: all
+BACKEND := local
+NAME := hashbang-stack
+
+export PATH := out/bin:$(PATH)
 
 .PHONY: all
-all: tools
+all: stack
 
 .PHONY: clean
 clean:
+ifeq ($(BACKEND),local)
+	kind delete cluster --name $(NAME)
+endif
 	rm -rf out
+
+.PHONY: stack
+stack: tools
+ifeq ($(BACKEND),local)
+	kind create cluster --name $(NAME)
+endif
 
 .PHONY: tools
 tools: out/bin/sops out/bin/kind out/bin/kubectl out/bin/terraform
