@@ -8,7 +8,7 @@ clean:
 	rm -rf out
 
 .PHONY: tools
-tools: out/bin/sops out/bin/kind out/bin/kubectl
+tools: out/bin/sops out/bin/kind out/bin/kubectl out/bin/terraform
 
 out/bin/sops: src/go-build/Dockerfile
 	$(call build,sops,https://github.com/mozilla/sops,v3.6.1,go.mozilla.org/sops/v3/cmd/sops,$<)
@@ -18,6 +18,9 @@ out/bin/kind: src/go-build/Dockerfile
 
 out/bin/kubectl: src/go-build/Dockerfile
 	$(call build,kubectl,https://github.com/kubernetes/kubernetes,v1.19.2,k8s.io/kubernetes/cmd/kubectl,$<)
+
+out/bin/terraform: src/go-build/Dockerfile
+	$(call build,terraform,https://github.com/hashicorp/terraform,v0.13.4,github.com/hashicorp/terraform,$<)
 
 
 export DOCKER_BUILDKIT = 1
