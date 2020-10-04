@@ -7,12 +7,6 @@ RUN apt update \
     && apt install -y git \
     && apt install -yt buster-backports golang
 
-ARG URL
-ARG REF
-RUN git clone $URL /src \
-    && cd /src \
-    && git checkout $REF
-
 WORKDIR /src
 
 ENV GOBIN=/src/bin \
@@ -23,10 +17,16 @@ ENV GOBIN=/src/bin \
     GOARCH=amd64 \
     GOPROXY=direct
 
+ARG URL
+ARG REF
 ARG BIN
-RUN go mod download
-RUN go build -v -trimpath -ldflags="-w" -o /src/bin/$BIN
+ARG PKG
+RUN git clone $URL /src \
+    && cd /src \
+    && git checkout $REF \
+    && go mod download
+RUN go build -v -trimpath -ldflags="-w" -o /src/bin/$BIN $PKG
 
 FROM scratch
 COPY --from=build /src/bin/$BIN /$BIN
-CMD ["/bin/$BIN"]
+CMD ["/$BIN"]
