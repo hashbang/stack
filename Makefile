@@ -9,6 +9,9 @@ K3S_URL=https://github.com/rancher/k3s
 K3D_REF=v3.1.3
 K3D_URL=https://github.com/rancher/k3d
 
+K9S_REF=v0.22.1
+K9S_URL=https://github.com/derailed/k9s
+
 SOPS_REF=v3.6.1
 SOPS_URL=https://github.com/mozilla/sops
 SOPS_PKG=go.mozilla.org/sops/v3/cmd/sops
@@ -74,7 +77,7 @@ build/images/shell: src/Dockerfile.shell
 	touch build/images/shell
 
 .PHONY: tools
-tools: build/bin/sops build/bin/kind build/bin/kubectl build/bin/terraform build/bin/ksops-exec build/bin/k3s build/bin/k3d
+tools: build/bin/sops build/bin/kind build/bin/kubectl build/bin/terraform build/bin/ksops-exec build/bin/k9s build/bin/k3s build/bin/k3d
 
 build/bin/k3s: src/Dockerfile.build
 	$(eval CMD="mkdir -p build/data && ./scripts/download && go generate && make && cp dist/artifacts/k3s ../out/")
@@ -83,6 +86,10 @@ build/bin/k3s: src/Dockerfile.build
 build/bin/k3d: src/Dockerfile.build
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/k3d")
 	$(call build,k3d,"$(K3D_URL)","$(K3D_REF)","$(CMD)",$<)
+
+build/bin/k9s: src/Dockerfile.build
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/k9s")
+	$(call build,k9s,"$(K9S_URL)","$(K9S_REF)","$(CMD)",$<)
 
 build/bin/kind: src/Dockerfile.build
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/kind")
