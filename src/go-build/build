@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+url=${URL?}
+ref=${REF?}
+cmd=${CMD?}
+
+export XDG_CACHE_HOME="/home/build/src/.cache"
+
+[ -z "$(ls -A "$HOME/src")" ] && git clone "${url}" "$HOME/src"
+cd "$HOME/src"
+git fetch
+git checkout "${ref}"
+
+eval "$cmd"
