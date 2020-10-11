@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+uid=${UID?}
+gid=${GID?}
+
+groupdel docker
+groupadd -g "$(stat --format='%g' /var/run/docker.sock)" docker
+groupadd -g "$gid" build
+useradd -G docker -g "$gid" -u "$uid" -md /home/build -s /bin/bash build
+
+export HOME=/home/build
+cd /home/build
+setpriv \
+	--reuid="$uid" \
+	--regid="$gid" \
+	--init-groups \
+	/usr/local/bin/build "$@"

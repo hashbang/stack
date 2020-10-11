@@ -1,57 +1,98 @@
 default: all
-BACKEND := local
+BACKEND := local-k3s
 NAME := hashbang-stack
 
-export PATH := out/bin:$(PATH)
+# Packages
+K3S_REF=v1.19.2+k3s1
+K3S_URL=https://github.com/rancher/k3s
+
+KSOPS_REF=v2.2.0
+KSOPS_URL=https://github.com/viaduct-ai/kustomize-sops
+
+SOPS_REF=v3.6.1
+SOPS_URL=https://github.com/mozilla/sops
+SOPS_PKG=go.mozilla.org/sops/v3/cmd/sops
+
+KIND_REF=v0.9.0
+KIND_URL=https://github.com/kubernetes-sigs/kind
+
+KUBECTL_REF=v1.19.2
+KUBECTL_URL=https://github.com/kubernetes/kubernetes
+KUBECTL_PKG=k8s.io/kubernetes/cmd/kubectl
+
+TERRAFORM_REF=v0.13.4
+TERRAFORM_URL=https://github.com/hashicorp/terraform
+TERRAFORM_PKG=github.com/hashicorp/terraform
+
+export PATH := build/bin:$(PATH)
 
 .PHONY: all
 all: stack
 
 .PHONY: clean
 clean:
-ifeq ($(BACKEND),local)
+ifeq ($(BACKEND),local-kind)
 	kind delete cluster --name $(NAME)
 endif
-	rm -rf out
+	rm -rf build/bin
+
+.PHONY: mrproper
+mrproper: clean
+	rm -rf build
 
 .PHONY: stack
 stack: tools
-ifeq ($(BACKEND),local)
+ifeq ($(BACKEND),local-kind)
 	kind create cluster --name $(NAME)
 endif
 
 .PHONY: tools
-tools: out/bin/sops out/bin/kind out/bin/kubectl out/bin/terraform
+#tools: out/bin/k3s out/bin/sops out/bin/kind out/bin/kubectl out/bin/terraform
+tools: build/bin/k3s build/bin/sops build/bin/kind build/bin/kubectl build/bin/terraform build/bin/ksops-exec
 
-out/bin/sops: src/go-build/Dockerfile
-	$(call build,sops,https://github.com/mozilla/sops,v3.6.1,go.mozilla.org/sops/v3/cmd/sops,$<)
+build/bin/k3s: src/go-build/Dockerfile
+	$(eval CMD="mkdir -p build/data && ./scripts/download && go generate && make && cp dist/artifacts/k3s ../out/")
+	$(call build,k3s,"$(K3S_URL)","$(K3S_REF)","$(CMD)",$<)
 
-out/bin/kind: src/go-build/Dockerfile
-	$(call build,kind,https://github.com/kubernetes-sigs/kind,v0.9.0,"",$<)
+build/bin/kind: src/go-build/Dockerfile
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/kind")
+	$(call build,kind,"$(KIND_URL)","$(KIND_REF)","$(CMD)",$<)
 
-out/bin/kubectl: src/go-build/Dockerfile
-	$(call build,kubectl,https://github.com/kubernetes/kubernetes,v1.19.2,k8s.io/kubernetes/cmd/kubectl,$<)
+build/bin/sops: src/go-build/Dockerfile
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/sops $(SOPS_PKG)")
+	$(call build,sops,"$(SOPS_URL)","$(SOPS_REF)","$(CMD)",$<)
 
-out/bin/terraform: src/go-build/Dockerfile
-	$(call build,terraform,https://github.com/hashicorp/terraform,v0.13.4,github.com/hashicorp/terraform,$<)
+build/bin/ksops-exec: src/go-build/Dockerfile
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/ksops-exec")
+	$(call build,ksops,"$(KSOPS_URL)","$(KSOPS_REF)","$(CMD)",$<)
 
+build/bin/kubectl: src/go-build/Dockerfile
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/kubectl $(KUBECTL_PKG)")
+	$(call build,kubectl,"$(KUBECTL_URL)","$(KUBECTL_REF)","$(CMD)",$<)
+
+build/bin/terraform: src/go-build/Dockerfile
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform $(TERRAFORM_PKG)")
+	$(call build,terraform,"$(TERRAFORM_URL)","$(TERRAFORM_REF)","$(CMD)",$<)
 
 export DOCKER_BUILDKIT = 1
 
 define build
-	mkdir -p out/bin/
+	mkdir -p $(PWD)/build/bin/
+	mkdir -p $(PWD)/build/$(1)/
 	docker build \
-		-t "local/$(1)-$(3)" \
-		--build-arg BIN=$(1) \
-		--build-arg URL=$(2) \
-		--build-arg REF=$(3) \
-		--build-arg PKG=$(4) \
-		- < "$(PWD)/$(5)" \
-	&& docker save local/$(1)-$(3) \
-		| tar -xf - -O "$(shell \
-			docker save local/$(1)-$(3) \
-				| tar -tf - \
-				| grep layer.tar \
-		)" | tar -xf - $(1) -O > out/bin/$(1) \
-	&& chmod +x out/bin/$(1)
+		-t "local/build" \
+		-f "$(PWD)/$(5)" \
+		. \
+	&& docker run -it \
+		--env URL="$(2)" \
+		--env REF="$(3)" \
+		--env CMD="$(4)" \
+		--env UID="$(shell id -u)" \
+		--env GID="$(shell id -g)" \
+		--privileged \
+		-v $(PWD)/build/$(1):/home/build/src \
+		-v $(PWD)/build/bin/:/home/build/out \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		"local/build" \
+	&& chmod +x build/bin/*
 endef

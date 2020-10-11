@@ -4,29 +4,22 @@ RUN echo "deb http://deb.debian.org/debian buster-backports main contrib" >> \
     /etc/apt/sources.list
 
 RUN apt update \
-    && apt install -y git \
+    && apt install -y git curl build-essential docker.io \
     && apt install -yt buster-backports golang
 
 WORKDIR /src
 
-ENV GOBIN=/src/bin \
-    GOPATH=/src/go \
+ENV GOBIN=/home/build/src/bin \
+    GOPATH=/home/build/src/go \
     CGO_ENABLED=0 \
     GO11MODULE=on \
     GOOS=linux \
     GOARCH=amd64 \
     GOPROXY=direct
 
-ARG URL
-ARG REF
-ARG BIN
-ARG PKG
-RUN git clone $URL /src \
-    && cd /src \
-    && git checkout $REF \
-    && go mod download
-RUN go build -v -trimpath -ldflags="-w" -o /src/bin/$BIN $PKG
+ADD src/go-build/build /usr/local/bin/build
+ADD src/go-build/host-env /usr/local/bin/host-env
 
-FROM scratch
-COPY --from=build /src/bin/$BIN /$BIN
-CMD ["/$BIN"]
+WORKDIR /src
+ENTRYPOINT ["/usr/local/bin/host-env"]
+CMD ["/usr/local/bin/build"]
