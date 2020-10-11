@@ -18,8 +18,8 @@ ENV GOBIN=/home/build/src/bin \
     GOPROXY=direct \
     PATH=/home/build/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-ADD src/scripts/build /usr/local/bin/build
-ADD src/scripts/host-env /usr/local/bin/host-env
+ADD images/stack-shared/build /usr/local/bin/build
+ADD images/stack-shared/host-env /usr/local/bin/host-env
 
 WORKDIR /src
 ENTRYPOINT ["/usr/local/bin/host-env"]

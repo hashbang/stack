@@ -5,7 +5,7 @@ url="${URL?}"
 ref="${REF?}"
 cmd="${CMD?}"
 
-export XDG_CACHE_HOME="/home/build/src/.cache"
+export XDG_CACHE_HOME="/home/build/.local/cache"
 
 [ -z "$(ls -A "$HOME/src")" ] && git clone "${url}" "$HOME/src"
 cd "$HOME/src"

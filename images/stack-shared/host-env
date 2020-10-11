@@ -17,7 +17,7 @@ useradd \
 	"${user}"
 
 export HOME="/home/${user}"
-export PATH="/home/${user}/build/bin:$PATH"
+export PATH="/home/${user}/.local/bin:$PATH"
 cd "/home/${user}"
 setpriv \
 	--reuid="$uid" \
