@@ -5,27 +5,20 @@ NAME := hashbang-stack
 # Packages
 K3S_REF=v1.19.2+k3s1
 K3S_URL=https://github.com/rancher/k3s
-
 K3D_REF=v3.1.3
 K3D_URL=https://github.com/rancher/k3d
-
 K9S_REF=v0.22.1
 K9S_URL=https://github.com/derailed/k9s
-
 SOPS_REF=v3.6.1
 SOPS_URL=https://github.com/mozilla/sops
 SOPS_PKG=go.mozilla.org/sops/v3/cmd/sops
-
 KSOPS_REF=v2.2.0
 KSOPS_URL=https://github.com/viaduct-ai/kustomize-sops
-
 KIND_REF=v0.9.0
 KIND_URL=https://github.com/kubernetes-sigs/kind
-
 KUBECTL_REF=v1.19.2
 KUBECTL_URL=https://github.com/kubernetes/kubernetes
 KUBECTL_PKG=k8s.io/kubernetes/cmd/kubectl
-
 TERRAFORM_REF=v0.13.4
 TERRAFORM_URL=https://github.com/hashicorp/terraform
 TERRAFORM_PKG=github.com/hashicorp/terraform
@@ -84,7 +77,7 @@ build/bin/k3s: src/Dockerfile.build
 	$(call build,k3s,"$(K3S_URL)","$(K3S_REF)","$(CMD)",$<)
 
 build/bin/k3d: src/Dockerfile.build
-	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/k3d")
+	$(eval CMD="make build && cp bin/k3d ../out/")
 	$(call build,k3d,"$(K3D_URL)","$(K3D_REF)","$(CMD)",$<)
 
 build/bin/k9s: src/Dockerfile.build
