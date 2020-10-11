@@ -33,16 +33,16 @@ update-packages:
 		--env GIT_EPOCH="$(GIT_EPOCH)" \
 		--name "$(NAME)-update-packages" \
 		--user $(shell id -u):$(shell id -g) \
-		--volume $(PWD)/files/etc/apt/packages.list:/etc/apt/packages-old.list \
+		--volume $(PWD)/files/etc/apt/packages.list:/etc/apt/packages.list \
 		--volume $(PWD)/files/usr/local/bin:/usr/local/bin \
 		debian \
 		tail -f /dev/null
-	docker exec -it --user=root "$(NAME)" apt-install
-	docker exec -it --user=root "$(NAME)" update-packages
+	docker exec -it --user=root "$(NAME)-update-packages" apt-install
+	docker exec -it --user=root "$(NAME)-update-packages" update-packages
 	docker cp \
-		"$(NAME):/etc/apt/packages.list" \
+		"$(NAME)-update-packages:/etc/apt/packages.list" \
 		"$(PWD)/files/etc/apt/packages.list"
 	docker cp \
-		"$(NAME):/etc/apt/sources.list" \
+		"$(NAME)-update-packages:/etc/apt/sources.list" \
 		"$(PWD)/files/etc/apt/sources.list"
 	docker rm -f "$(NAME)-update-packages"

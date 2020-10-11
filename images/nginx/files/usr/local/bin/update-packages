@@ -2,6 +2,7 @@
 [ -f /.dockerenv ] || { echo "please run in supplied container"; exit 1; }
 set -e
 
+cp /etc/apt/packages.list /etc/apt/packages-old.list
 cat /etc/apt/packages-old.list | sed 's/=.*//g' \
         > /etc/apt/packages.list
 
