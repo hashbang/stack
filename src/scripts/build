@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-url=${URL?}
-ref=${REF?}
-cmd=${CMD?}
+url="${URL?}"
+ref="${REF?}"
+cmd="${CMD?}"
 
 export XDG_CACHE_HOME="/home/build/src/.cache"
 

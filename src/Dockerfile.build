@@ -15,10 +15,11 @@ ENV GOBIN=/home/build/src/bin \
     GO11MODULE=on \
     GOOS=linux \
     GOARCH=amd64 \
-    GOPROXY=direct
+    GOPROXY=direct \
+    PATH=/home/build/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-ADD src/go-build/build /usr/local/bin/build
-ADD src/go-build/host-env /usr/local/bin/host-env
+ADD src/scripts/build /usr/local/bin/build
+ADD src/scripts/host-env /usr/local/bin/host-env
 
 WORKDIR /src
 ENTRYPOINT ["/usr/local/bin/host-env"]
