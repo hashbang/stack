@@ -1,5 +1,5 @@
 default: all
-BACKEND := local-k3d
+BACKEND := local
 NAME := hashbang-stack
 export DOCKER_BUILDKIT = 1
 export PATH := .local/bin:$(PATH)
@@ -11,9 +11,7 @@ all: stack
 
 .PHONY: clean
 clean:
-ifeq ($(BACKEND),local-kind)
-	kind delete cluster --name $(NAME) ||:
-else ifeq ($(BACKEND),local-k3d)
+ifeq ($(BACKEND),local)
 	k3d cluster delete $(NAME) ||:
 endif
 	rm -rf .local/bin/*
@@ -25,11 +23,11 @@ mrproper: clean
 	docker rm -f $(NAME)-shell ||:
 
 .PHONY: stack
-stack: tools
-ifeq ($(BACKEND),local-kind)
-	kind create cluster --name $(NAME)
-else ifeq ($(BACKEND),local-k3d)
+stack: tools .local/images/docker-registry.tar
+ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME)
+	k3d image -c $(NAME) import .local/images/docker-registry.tar
+	k3d kubeconfig merge $(NAME) --switch-context
 endif
 
 .PHONY: shell
@@ -66,7 +64,7 @@ shell: tools .local/images/stack-shell.tar
 ## Tools
 
 .PHONY: tools
-tools: .local/bin/k3s .local/bin/k3d .local/bin/k9s .local/bin/kind .local/bin/sops .local/bin/ksops-exec .local/bin/kubectl .local/bin/terraform
+tools: .local/bin/k3s .local/bin/k3d .local/bin/k9s .local/bin/sops .local/bin/ksops-exec .local/bin/kubectl .local/bin/terraform
 
 K3S_REF=v1.19.2+k3s1
 K3S_URL=https://github.com/rancher/k3s
@@ -85,12 +83,6 @@ K9S_URL=https://github.com/derailed/k9s
 .local/bin/k9s: .local/images/stack-build.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/k9s")
 	$(call build,k9s,"$(K9S_URL)","$(K9S_REF)","$(CMD)")
-
-KIND_REF=v0.9.0
-KIND_URL=https://github.com/kubernetes-sigs/kind
-.local/bin/kind: .local/images/stack-build.tar
-	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/kind")
-	$(call build,kind,"$(KIND_URL)","$(KIND_REF)","$(CMD)")
 
 SOPS_REF=v3.6.1
 SOPS_URL=https://github.com/mozilla/sops
