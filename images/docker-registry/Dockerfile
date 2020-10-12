@@ -33,14 +33,14 @@ RUN git clone https://github.com/docker/distribution.git ~/src
 RUN cd ~/src \
     && git checkout ${VERSION} \
     && CGO_ENABLED=0 make PREFIX=~/src/go binaries \
-    && file bin/registry | grep "statically linked"
+    && file ./bin/registry | grep "statically linked"
 
 ## Build rootfs
 RUN mkdir -p ~/rootfs/etc \
-    && cp bin/registry ~/rootfs/ \
     && echo "nogroup:*:100:nobody" > ~/rootfs/etc/group \
     && echo "nobody:*:100:100:::" > ~/rootfs/etc/passwd \
-    && cp cmd/registry/config-dev.yml ~/rootfs/config.yml
+    && cp src/bin/registry ~/rootfs/ \
+    && cp src/cmd/registry/config-dev.yml ~/rootfs/config.yml
 
 ## Create bare minimum output image
 FROM scratch
