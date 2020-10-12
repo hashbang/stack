@@ -4,6 +4,8 @@ set -e
 uid=${UID?}
 gid=${GID?}
 user=${USER:-"build"}
+export HOME="/home/${user}"
+export PATH="/home/${user}/.local/bin:$PATH"
 
 groupdel docker
 groupadd -g "$(stat --format='%g' /var/run/docker.sock)" docker
@@ -16,9 +18,9 @@ useradd \
 	-s /bin/bash \
 	"${user}"
 
-export HOME="/home/${user}"
-export PATH="/home/${user}/.local/bin:$PATH"
-cd "/home/${user}"
+mkdir -p "$HOME"
+chown -R "$uid:$gid" "$HOME"
+cd "$HOME"
 setpriv \
 	--reuid="$uid" \
 	--regid="$gid" \

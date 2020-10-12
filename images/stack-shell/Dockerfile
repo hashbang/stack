@@ -1,7 +1,4 @@
-FROM debian:buster as build
-
-RUN echo "deb http://deb.debian.org/debian buster-backports main contrib" >> \
-    /etc/apt/sources.list
+FROM debian:buster
 
 RUN apt update \
     && apt install -y git curl vim nano build-essential docker.io
