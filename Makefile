@@ -1,6 +1,9 @@
 default: all
 BACKEND := local
 NAME := hashbang-stack
+ifeq ($(BACKEND),local)
+REGISTRY := $(NAME)-registry.local:5000
+endif
 export DOCKER_BUILDKIT = 1
 export PATH := .local/bin:$(PATH)
 
@@ -22,11 +25,24 @@ mrproper: clean
 	docker rm -f $(NAME)-build ||:
 	docker rm -f $(NAME)-shell ||:
 
+.PHONY: registry
+registry: .local/images/docker-registry.tar
+ifeq ($(BACKEND),local)
+	docker volume create $(NAME)_registry
+	docker container run \
+		--detach \
+		--name $(NAME)-registry.local \
+		--volume $(NAME)_registry:/var/lib/registry \
+		--restart always \
+		-p 5000:5000 \
+		$(REGISTRY)/registry
+endif
+
 .PHONY: stack
-stack: tools .local/images/docker-registry.tar
+stack: tools registry
 ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME)
-	k3d image -c $(NAME) import .local/images/docker-registry.tar
+	docker network connect k3d-$(NAME) $(NAME)-registry.local
 	k3d kubeconfig merge $(NAME) --switch-context
 endif
 
@@ -41,25 +57,28 @@ shell: tools .local/images/stack-shell.tar
 		--privileged \
 		--hostname "$(NAME)" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"local/$(NAME)-shell" /bin/bash
+		"$(REGISTRY)/shell" \
+		/bin/bash
 
 ## Images
 
+## External Images
+
 .local/images/stack-shell.tar: images/stack-shell/Dockerfile
-	docker build -t "local/$(NAME)-shell" -f "$<" .
-	mkdir -p $(@D) && docker save "local/$(NAME)-shell" -o "$@"
+	docker build -t "$(REGISTRY)/shell" -f "$<" .
+	mkdir -p $(@D) && docker save "$(REGISTRY)/shell" -o "$@"
 
 .local/images/stack-build.tar: images/stack-build/Dockerfile
-	docker build -t "local/$(NAME)-build" -f "$<" .
-	mkdir -p $(@D) && docker save "local/$(NAME)-build" -o "$@"
+	docker build -t "$(REGISTRY)/build" -f "$<" .
+	mkdir -p $(@D) && docker save "$(REGISTRY)/build" -o "$@"
 
 .local/images/docker-registry.tar: images/docker-registry
-	cd "$<" && make IMAGE="local/$(NAME)-docker-registry"
-	mkdir -p $(@D) && docker save "local/$(NAME)-docker-registry" -o "$@"
+	cd "$<" && make IMAGE="$(REGISTRY)/registry"
+	mkdir -p $(@D) && docker save "$(REGISTRY)/registry" -o "$@"
 
 .local/images/nginx.tar: images/nginx
-	cd "$<" && make IMAGE="local/$(NAME)-nginx"
-	mkdir -p $(@D) && docker save "local/$(NAME)-nginx" -o "$@"
+	cd "$<" && make IMAGE="$(REGISTRY)/nginx"
+	mkdir -p $(@D) && docker save "$(REGISTRY)/nginx" -o "$@"
 
 ## Tools
 
@@ -126,7 +145,7 @@ define build
 		-v $(PWD)/.local/cache/$(1):/home/build/src \
 		-v $(PWD)/.local/bin/:/home/build/out \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"local/$(NAME)-build" \
+		"$(REGISTRY)/build" \
 		build \
 	&& chmod +x .local/bin/*
 endef
