@@ -1,8 +1,8 @@
 default: all
 BACKEND := local
-NAME := hashbang-stack
+NAME := hashbang
 ifeq ($(BACKEND),local)
-REGISTRY := $(NAME)-registry.local:5000
+REGISTRY := registry.$(NAME).localhost:5000
 endif
 export DOCKER_BUILDKIT = 1
 export PATH := .local/bin:$(PATH)
@@ -17,7 +17,12 @@ clean:
 ifeq ($(BACKEND),local)
 	k3d cluster delete $(NAME) ||:
 endif
+ifeq ($(BACKEND),local)
+	k3d cluster delete $(NAME) ||:
+	docker rm -f $(NAME)-registry
+endif
 	rm -rf .local/bin/*
+	rm -rf .local/images/*
 
 .PHONY: mrproper
 mrproper: clean
@@ -28,11 +33,14 @@ mrproper: clean
 .PHONY: registry
 registry: .local/images/docker-registry.tar
 ifeq ($(BACKEND),local)
-	docker volume create $(NAME)_registry
+	docker network create "$(NAME)" || :
+	docker volume create $(NAME)-registry
 	docker container run \
 		--detach \
-		--name $(NAME)-registry.local \
-		--volume $(NAME)_registry:/var/lib/registry \
+		--name "registry.$(NAME)" \
+		--hostname "registry.$(NAME)" \
+		--network "$(NAME)" \
+		--volume $(NAME)-registry:/data \
 		--restart always \
 		-p 5000:5000 \
 		$(REGISTRY)/registry
@@ -42,23 +50,28 @@ endif
 stack: tools registry
 ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME)
-	docker network connect k3d-$(NAME) $(NAME)-registry.local
+	docker network connect k3d-$(NAME) $(NAME)
 	k3d kubeconfig merge $(NAME) --switch-context
 endif
 
 .PHONY: shell
 shell: tools .local/images/stack-shell.tar
+	$(contain)
+
+contain = \
 	docker run \
-		-it \
+		--rm \
+		--tty \
+		--interactive \
 		--env UID="$(shell id -u)" \
 		--env GID="$(shell id -g)" \
 		--env USER="${USER}" \
 		--volume $(PWD):${HOME} \
 		--privileged \
+		--network "$(NAME)" \
 		--hostname "$(NAME)" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"$(REGISTRY)/shell" \
-		/bin/bash
+		"$(REGISTRY)/shell"
 
 ## Images
 
@@ -78,6 +91,7 @@ shell: tools .local/images/stack-shell.tar
 
 .local/images/nginx.tar: images/nginx
 	cd "$<" && make IMAGE="$(REGISTRY)/nginx"
+	docker push $(REGISTRY)/nginx
 	mkdir -p $(@D) && docker save "$(REGISTRY)/nginx" -o "$@"
 
 ## Tools
@@ -93,7 +107,7 @@ K3S_URL=https://github.com/rancher/k3s
 
 K3D_REF=v3.1.3
 K3D_URL=https://github.com/rancher/k3d
-.local/bin/k3d: .local/images/stack-build.tar
+local/bin/k3d: .local/images/stack-build.tar
 	$(eval CMD="make build && cp bin/k3d ../out/")
 	$(call build,k3d,"$(K3D_URL)","$(K3D_REF)","$(CMD)")
 
@@ -135,7 +149,9 @@ define build
 		$(PWD)/.local/images \
 		$(PWD)/.local/bin \
 		$(PWD)/.local/cache/$(1)
-	docker run -it \
+	docker run \
+		--interactive \
+		--tty \
 		--env URL="$(2)" \
 		--env REF="$(3)" \
 		--env CMD="$(4)" \

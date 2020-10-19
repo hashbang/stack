@@ -39,6 +39,7 @@ RUN cd ~/src \
 RUN mkdir -p ~/rootfs/etc \
     && echo "nogroup:*:100:nobody" > ~/rootfs/etc/group \
     && echo "nobody:*:100:100:::" > ~/rootfs/etc/passwd \
+    && mkdir ~/rootfs/data \
     && cp src/bin/registry ~/rootfs/ \
     && cp src/cmd/registry/config-dev.yml ~/rootfs/config.yml
 
@@ -48,6 +49,7 @@ COPY --from=build --chown=100:100 /home/build/rootfs /
 STOPSIGNAL SIGQUIT
 EXPOSE 8080
 USER 100:100
-VOLUME ["/var/lib/registry"]
+ENV REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
+VOLUME ["/data"]
 ENTRYPOINT ["/registry"]
 CMD ["serve", "/config.yml"]
