@@ -1,3 +1,4 @@
+FROM images/debian-build
 ARG DEBIAN_IMAGE_HASH
 
 FROM debian@sha256:${DEBIAN_IMAGE_HASH} as build
@@ -30,10 +31,13 @@ ENV GOBIN=/home/build/src/bin \
 
 ## Build binary
 ARG VERSION
-RUN git clone https://github.com/go-gitea/gitea.git ~/src
-RUN cd ~/src \
+ARG REPO
+RUN git clone https://github.com/go-gitea/gitea.git ~/src \
+    && cd ~/src \
     && git checkout ${VERSION} \
-    && make backend \
+
+ARG BUILD_COMMAND
+RUN make backend \
     && file ./gitea | grep "statically linked"
 
 ## Build rootfs
@@ -49,6 +53,6 @@ COPY --from=build --chown=100:100 /home/build/rootfs /
 STOPSIGNAL SIGQUIT
 EXPOSE 8080
 USER 100:100
-ENV GITEA_CUATOM /data
+ENV GITEA_CUSTOM /data
 VOLUME ["/data"]
 ENTRYPOINT ["/gitea"]

@@ -8,6 +8,11 @@ export HOME="/home/${user}"
 export PATH="/home/${user}/.local/bin:$PATH"
 
 groupdel docker
+userdel "${user}" >/dev/null 2>&1 ||:
+userdel "$(id -un -- ${uid})" >/dev/null 2>&1 ||:
+groupdel "${user}" >/dev/null 2>&1 ||:
+groupdel "$(id -un -- ${uid})" >/dev/null 2>&1 ||:
+
 groupadd -g "$(stat --format='%g' /var/run/docker.sock)" docker
 groupadd -g "$gid" "${user}"
 useradd \
@@ -18,7 +23,7 @@ useradd \
 	-s /bin/bash \
 	"${user}"
 
-mkdir -p "$HOME"
+mkdir -p "$HOME/.local/bin"
 chown -R "$uid:$gid" "$HOME"
 cd "$HOME"
 setpriv \

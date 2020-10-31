@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e;
 
-apt-get update
+apt-get -o Acquire::Check-Valid-Until=false update
 until apt-get install -y $(cat /etc/apt/packages.list); do
     echo "apt install failed. Likely throttled. Retrying in 10 mins...";
     sleep 600;

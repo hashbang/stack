@@ -4,8 +4,12 @@ NAME := hashbang
 ifeq ($(BACKEND),local)
 REGISTRY := registry.$(NAME).localhost:5000
 endif
-export DOCKER_BUILDKIT = 1
-export PATH := .local/bin:$(PATH)
+GIT_EPOCH := $(shell git log -1 --format=%at config.env)
+GIT_DATETIME := \
+        $(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S' config.env)
+.DEFAULT_GOAL := all
+-include $(PWD)/config.env
+export PATH := $(PWD)/bin:$(PATH)
 
 ## Primary Targets
 
@@ -21,17 +25,19 @@ ifeq ($(BACKEND),local)
 	k3d cluster delete $(NAME) ||:
 	docker rm -f $(NAME)-registry
 endif
-	rm -rf .local/bin/*
-	rm -rf .local/images/*
+	rm -rf bin
+	rm -rf images/*.tar
 
 .PHONY: mrproper
 mrproper: clean
-	rm -rf .local
+	rm -rf .cache
+	docker network rm "$(NAME)" ||:
+	docker volume rm "$(NAME)-registry" ||:
 	docker rm -f $(NAME)-build ||:
 	docker rm -f $(NAME)-shell ||:
 
 .PHONY: registry
-registry: .local/images/docker-registry.tar
+registry: images/docker-registry.tar
 ifeq ($(BACKEND),local)
 	docker network create "$(NAME)" || :
 	docker volume create $(NAME)-registry
@@ -55,10 +61,8 @@ ifeq ($(BACKEND),local)
 endif
 
 .PHONY: shell
-shell: tools .local/images/stack-shell.tar
-	$(contain)
-
-contain = \
+shell: tools images/stack-shell.tar
+	docker load -i images/stack-shell.tar
 	docker run \
 		--rm \
 		--tty \
@@ -68,28 +72,55 @@ contain = \
 		--env USER="${USER}" \
 		--volume $(PWD):${HOME} \
 		--privileged \
+		--user root \
 		--network "$(NAME)" \
 		--hostname "$(NAME)" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"$(REGISTRY)/shell"
+		"$(NAME)/stack-shell"
 
 ## Images
 
-## External Images
+images/stack-base.tar: src/stack-base
+	docker build \
+		--tag $(NAME)/stack-base \
+		--build-arg DEBIAN_IMAGE_HASH \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(NAME)/stack-base" -o "$@"
 
-.local/images/stack-shell.tar: images/stack-shell/Dockerfile
-	docker build -t "$(REGISTRY)/shell" -f "$<" .
-	mkdir -p $(@D) && docker save "$(REGISTRY)/shell" -o "$@"
+images/stack-go.tar: src/stack-go images/stack-base.tar
+	docker load -i images/stack-base.tar
+	docker build \
+		--tag $(NAME)/stack-go \
+		--cache-from $(NAME)/stack-base \
+		--build-arg FROM=$(NAME)/stack-base \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(NAME)/stack-go" -o "$@"
 
-.local/images/stack-build.tar: images/stack-build/Dockerfile
-	docker build -t "$(REGISTRY)/build" -f "$<" .
-	mkdir -p $(@D) && docker save "$(REGISTRY)/build" -o "$@"
+images/stack-shell.tar: src/stack-shell images/stack-base.tar
+	docker load -i images/stack-base.tar
+	docker build \
+		--tag $(NAME)/stack-shell \
+		--cache-from $(NAME)/stack-base \
+		--build-arg FROM=$(NAME)/stack-base \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(NAME)/stack-shell" -o "$@"
 
-.local/images/docker-registry.tar: images/docker-registry
-	cd "$<" && make IMAGE="$(REGISTRY)/registry"
-	mkdir -p $(@D) && docker save "$(REGISTRY)/registry" -o "$@"
+images/docker-registry.tar: src/docker-registry images/stack-go.tar
+	docker load -i images/stack-go.tar
+	docker build \
+		--tag $(NAME)/registry \
+		--cache-from $(NAME)/stack-go \
+		--build-arg FROM=$(NAME)/stack-go \
+		--build-arg URL="$(DOCKER_REGISTRY_URL)" \
+		--build-arg REF="$(DOCKER_REGISTRY_REF)" \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(NAME)/registry" -o "$@"
 
-.local/images/nginx.tar: images/nginx
+images/nginx.tar: src/nginx
 	cd "$<" && make IMAGE="$(REGISTRY)/nginx"
 	docker push $(REGISTRY)/nginx
 	mkdir -p $(@D) && docker save "$(REGISTRY)/nginx" -o "$@"
@@ -97,58 +128,44 @@ contain = \
 ## Tools
 
 .PHONY: tools
-tools: .local/bin/k3s .local/bin/k3d .local/bin/k9s .local/bin/sops .local/bin/ksops-exec .local/bin/kubectl .local/bin/terraform
+tools: bin/k3s bin/k3d bin/k9s bin/sops bin/ksops-exec bin/kubectl bin/terraform
 
-K3S_REF=v1.19.2+k3s1
-K3S_URL=https://github.com/rancher/k3s
-.local/bin/k3s: .local/images/stack-build.tar
+bin/k3s: images/stack-go.tar
 	$(eval CMD="mkdir -p build/data && ./scripts/download && go generate && make && cp dist/artifacts/k3s ../out/")
 	$(call build,k3s,"$(K3S_URL)","$(K3S_REF)","$(CMD)")
 
-K3D_REF=v3.1.3
-K3D_URL=https://github.com/rancher/k3d
-local/bin/k3d: .local/images/stack-build.tar
+bin/k3d: images/stack-go.tar
 	$(eval CMD="make build && cp bin/k3d ../out/")
 	$(call build,k3d,"$(K3D_URL)","$(K3D_REF)","$(CMD)")
 
-K9S_REF=v0.22.1
-K9S_URL=https://github.com/derailed/k9s
-.local/bin/k9s: .local/images/stack-build.tar
+bin/k9s: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/k9s")
 	$(call build,k9s,"$(K9S_URL)","$(K9S_REF)","$(CMD)")
 
-SOPS_REF=v3.6.1
-SOPS_URL=https://github.com/mozilla/sops
-SOPS_PKG=go.mozilla.org/sops/v3/cmd/sops
-.local/bin/sops: .local/images/stack-build.tar
+bin/sops: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/sops $(SOPS_PKG)")
 	$(call build,sops,"$(SOPS_URL)","$(SOPS_REF)","$(CMD)")
 
-KSOPS_REF=v2.2.0
-KSOPS_URL=https://github.com/viaduct-ai/kustomize-sops
-.local/bin/ksops-exec: .local/images/stack-build.tar
+bin/ksops-exec: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/ksops-exec")
 	$(call build,ksops,"$(KSOPS_URL)","$(KSOPS_REF)","$(CMD)")
 
-KUBECTL_REF=v1.19.2
-KUBECTL_URL=https://github.com/kubernetes/kubernetes
-KUBECTL_PKG=k8s.io/kubernetes/cmd/kubectl
-.local/bin/kubectl: .local/images/stack-build.tar
+bin/kubectl: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/kubectl $(KUBECTL_PKG)")
 	$(call build,kubectl,"$(KUBECTL_URL)","$(KUBECTL_REF)","$(CMD)")
 
-TERRAFORM_REF=v0.13.4
-TERRAFORM_URL=https://github.com/hashicorp/terraform
-TERRAFORM_PKG=github.com/hashicorp/terraform
-.local/bin/terraform: .local/images/stack-build.tar
+bin/terraform: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform $(TERRAFORM_PKG)")
 	$(call build,terraform,"$(TERRAFORM_URL)","$(TERRAFORM_REF)","$(CMD)")
 
+# Make Helpers
+
+## Note: --user root, privileged, and the docker socket are all required as
+## some builds (k3s) use docker/dapper to build some components
+## If anyone can find a nice way to avoid this, we could build unprivileged
 define build
-	mkdir -p \
-		$(PWD)/.local/images \
-		$(PWD)/.local/bin \
-		$(PWD)/.local/cache/$(1)
+	mkdir -p .cache
+	docker load -i images/stack-go.tar
 	docker run \
 		--interactive \
 		--tty \
@@ -158,10 +175,10 @@ define build
 		--env UID="$(shell id -u)" \
 		--env GID="$(shell id -g)" \
 		--privileged \
-		-v $(PWD)/.local/cache/$(1):/home/build/src \
-		-v $(PWD)/.local/bin/:/home/build/out \
+		--user root \
+		-v $(PWD)/.cache/$(1):/home/build/src \
+		-v $(PWD)/bin/:/home/build/out \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"$(REGISTRY)/build" \
-		build \
-	&& chmod +x .local/bin/*
+		"$(NAME)/stack-go" \
+	&& chmod +x $(PWD)/bin/*
 endef
