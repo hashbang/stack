@@ -1,28 +1,8 @@
-ARG DEBIAN_IMAGE_HASH
-
-FROM debian@sha256:${DEBIAN_IMAGE_HASH} as build
-
-ENV DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8 \
-    TZ=UTC \
-    HOME=/home/build \
-    PATH=/home/build/.local/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-ADD files /
-
-## Install packages from packages.list with retry
-RUN apt-install
-
-## Globally freeze time/date syscalls for determinism
-RUN enable-faketime
-
-## Create user and pivot to it
-RUN useradd -ms /bin/bash build
-WORKDIR /home/build
-USER build
+ARG FROM
+FROM ${FROM} as build
 
 ## Build binary
-ARG VERSION
+ARG REF
 ARG PCRE_HASH
 ARG PCRE_VERSION
 ADD --chown=build:build https://ftp.pcre.org/pub/pcre/pcre-${PCRE_VERSION}.tar.gz /tmp/pcre.tar.gz
@@ -31,7 +11,7 @@ RUN [ "$PCRE_HASH" = "$(sha256sum /tmp/pcre.tar.gz | awk '{print $1}')" ] \
     && mv /tmp/pcre-${PCRE_VERSION} /home/build/pcre \
     && git clone https://github.com/nginx/nginx.git /home/build/nginx
 RUN cd /home/build/nginx \
-    && git checkout ${VERSION} \
+    && git checkout ${REF} \
     && ./auto/configure \
         --with-pcre=/home/build/pcre \
         --with-cc="musl-gcc" \
@@ -61,7 +41,7 @@ RUN mkdir -p /home/build/rootfs/etc \
     && echo "nobody:*:100:100:::" > /home/build/rootfs/etc/passwd \
     && mkdir /home/build/rootfs/tmp \
     && touch /home/build/rootfs/tmp/.keep \
-    && cp /etc/nginx/nginx.conf /home/build/rootfs/
+ADD nginx.conf /home/build/rootfs/
 
 # Create bare minimum output image
 FROM scratch

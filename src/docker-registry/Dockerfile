@@ -23,7 +23,7 @@ RUN mkdir -p ~/rootfs/etc \
 FROM scratch
 COPY --from=build --chown=100:100 /home/build/rootfs /
 STOPSIGNAL SIGQUIT
-EXPOSE 8080
+EXPOSE 5000
 USER 100:100
 ENV REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
 VOLUME ["/data"]

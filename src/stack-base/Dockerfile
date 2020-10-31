@@ -10,9 +10,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 ADD files /
 
-RUN enable-faketime
-
 RUN apt-install
+
+RUN enable-faketime
 
 RUN useradd -ms /bin/bash build
 USER build

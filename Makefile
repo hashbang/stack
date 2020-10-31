@@ -2,7 +2,7 @@ default: all
 BACKEND := local
 NAME := hashbang
 ifeq ($(BACKEND),local)
-REGISTRY := registry.$(NAME).localhost:5000
+REGISTRY := k3d-$(NAME)-registry:5000
 endif
 GIT_EPOCH := $(shell git log -1 --format=%at config.env)
 GIT_DATETIME := \
@@ -17,16 +17,16 @@ export PATH := $(PWD)/bin:$(PATH)
 all: stack
 
 .PHONY: clean
-clean:
-ifeq ($(BACKEND),local)
-	k3d cluster delete $(NAME) ||:
-endif
-ifeq ($(BACKEND),local)
-	k3d cluster delete $(NAME) ||:
-	docker rm -f $(NAME)-registry
-endif
+clean: clean-stack
 	rm -rf bin
 	rm -rf images/*.tar
+
+.PHONY: clean-stack
+clean-stack:
+ifeq ($(BACKEND),local)
+	k3d cluster delete $(NAME) ||:
+	docker rm -f k3d-$(NAME)-registry ||:
+endif
 
 .PHONY: mrproper
 mrproper: clean
@@ -39,24 +39,23 @@ mrproper: clean
 .PHONY: registry
 registry: images/docker-registry.tar
 ifeq ($(BACKEND),local)
-	docker network create "$(NAME)" || :
+	docker network create "k3d-$(NAME)" || :
 	docker volume create $(NAME)-registry
+	docker load -i images/docker-registry.tar
 	docker container run \
 		--detach \
-		--name "registry.$(NAME)" \
-		--hostname "registry.$(NAME)" \
-		--network "$(NAME)" \
+		--name "k3d-$(NAME)-registry" \
+		--hostname "k3d-$(NAME)-registry" \
+		--network "k3d-$(NAME)" \
 		--volume $(NAME)-registry:/data \
 		--restart always \
-		-p 5000:5000 \
-		$(REGISTRY)/registry
+		$(NAME)/registry
 endif
 
 .PHONY: stack
 stack: tools registry
 ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME)
-	docker network connect k3d-$(NAME) $(NAME)
 	k3d kubeconfig merge $(NAME) --switch-context
 endif
 
@@ -73,7 +72,7 @@ shell: tools images/stack-shell.tar
 		--volume $(PWD):${HOME} \
 		--privileged \
 		--user root \
-		--network "$(NAME)" \
+		--network "k3d-$(NAME)" \
 		--hostname "$(NAME)" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		"$(NAME)/stack-shell"
@@ -120,10 +119,18 @@ images/docker-registry.tar: src/docker-registry images/stack-go.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(NAME)/registry" -o "$@"
 
-images/nginx.tar: src/nginx
-	cd "$<" && make IMAGE="$(REGISTRY)/nginx"
-	docker push $(REGISTRY)/nginx
-	mkdir -p $(@D) && docker save "$(REGISTRY)/nginx" -o "$@"
+images/nginx.tar: src/nginx images/stack-base.tar
+	docker load -i images/stack-base.tar
+	docker build \
+		--tag $(NAME)/nginx \
+		--cache-from $(NAME)/stack-base \
+		--build-arg FROM=$(NAME)/stack-base \
+		--build-arg REF="$(NGINX_REF)" \
+		--build-arg PCRE_VERSION="$(NGINX_PCRE_VERSION)" \
+		--build-arg PCRE_HASH="$(NGINX_PCRE_HASH)" \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(NAME)/nginx" -o "$@"
 
 ## Tools
 
