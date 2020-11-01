@@ -2,7 +2,7 @@ default: all
 BACKEND := local
 NAME := hashbang
 ifeq ($(BACKEND),local)
-REGISTRY := k3d-$(NAME)-registry:5000
+REGISTRY := registry.$(NAME).localhost:5000
 endif
 GIT_EPOCH := $(shell git log -1 --format=%at config.env)
 GIT_DATETIME := \
@@ -39,21 +39,32 @@ mrproper: clean
 .PHONY: registry
 registry: images/docker-registry.tar
 ifeq ($(BACKEND),local)
+ifeq ($(shell docker ps -a | grep "k3d-$(NAME)-registry" >/dev/null; echo $$?),1)
 	docker network create "k3d-$(NAME)" || :
 	docker volume create $(NAME)-registry
 	docker load -i images/docker-registry.tar
 	docker container run \
 		--detach \
 		--name "k3d-$(NAME)-registry" \
-		--hostname "k3d-$(NAME)-registry" \
+		--hostname "registry.$(NAME).localhost" \
 		--network "k3d-$(NAME)" \
 		--volume $(NAME)-registry:/data \
 		--restart always \
-		$(NAME)/registry
+		-p 5000:5000 \
+		$(REGISTRY)/registry
+endif
+endif
+
+.PHONY: registry-push
+registry-push: registry images/stack-shell.tar images/nginx.tar
+ifeq ($(BACKEND),local)
+	$(contain) bash -c " \
+		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx \
+	"
 endif
 
 .PHONY: stack
-stack: tools registry
+stack: tools registry registry-push
 ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME)
 	k3d kubeconfig merge $(NAME) --switch-context
@@ -62,9 +73,13 @@ endif
 .PHONY: shell
 shell: tools images/stack-shell.tar
 	docker load -i images/stack-shell.tar
+	$(contain)
+
+contain := \
 	docker run \
 		--rm \
 		--tty \
+		--name=k3d-$(NAME)-shell \
 		--interactive \
 		--env UID="$(shell id -u)" \
 		--env GID="$(shell id -g)" \
@@ -75,62 +90,62 @@ shell: tools images/stack-shell.tar
 		--network "k3d-$(NAME)" \
 		--hostname "$(NAME)" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"$(NAME)/stack-shell"
+		"$(REGISTRY)/stack-shell"
 
 ## Images
 
 images/stack-base.tar: src/stack-base
 	docker build \
-		--tag $(NAME)/stack-base \
+		--tag $(REGISTRY)/stack-base \
 		--build-arg DEBIAN_IMAGE_HASH \
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
-	docker save "$(NAME)/stack-base" -o "$@"
+	docker save "$(REGISTRY)/stack-base" -o "$@"
 
 images/stack-go.tar: src/stack-go images/stack-base.tar
 	docker load -i images/stack-base.tar
 	docker build \
-		--tag $(NAME)/stack-go \
-		--cache-from $(NAME)/stack-base \
-		--build-arg FROM=$(NAME)/stack-base \
+		--tag $(REGISTRY)/stack-go \
+		--cache-from $(REGISTRY)/stack-base \
+		--build-arg FROM=$(REGISTRY)/stack-base \
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
-	docker save "$(NAME)/stack-go" -o "$@"
+	docker save "$(REGISTRY)/stack-go" -o "$@"
 
 images/stack-shell.tar: src/stack-shell images/stack-base.tar
 	docker load -i images/stack-base.tar
 	docker build \
-		--tag $(NAME)/stack-shell \
-		--cache-from $(NAME)/stack-base \
-		--build-arg FROM=$(NAME)/stack-base \
+		--tag $(REGISTRY)/stack-shell \
+		--cache-from $(REGISTRY)/stack-base \
+		--build-arg FROM=$(REGISTRY)/stack-base \
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
-	docker save "$(NAME)/stack-shell" -o "$@"
+	docker save "$(REGISTRY)/stack-shell" -o "$@"
 
 images/docker-registry.tar: src/docker-registry images/stack-go.tar
 	docker load -i images/stack-go.tar
 	docker build \
-		--tag $(NAME)/registry \
-		--cache-from $(NAME)/stack-go \
-		--build-arg FROM=$(NAME)/stack-go \
+		--tag $(REGISTRY)/registry \
+		--cache-from $(REGISTRY)/stack-go \
+		--build-arg FROM=$(REGISTRY)/stack-go \
 		--build-arg URL="$(DOCKER_REGISTRY_URL)" \
 		--build-arg REF="$(DOCKER_REGISTRY_REF)" \
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
-	docker save "$(NAME)/registry" -o "$@"
+	docker save "$(REGISTRY)/registry" -o "$@"
 
 images/nginx.tar: src/nginx images/stack-base.tar
 	docker load -i images/stack-base.tar
 	docker build \
-		--tag $(NAME)/nginx \
-		--cache-from $(NAME)/stack-base \
-		--build-arg FROM=$(NAME)/stack-base \
+		--tag $(REGISTRY)/nginx \
+		--cache-from $(REGISTRY)/stack-base \
+		--build-arg FROM=$(REGISTRY)/stack-base \
 		--build-arg REF="$(NGINX_REF)" \
 		--build-arg PCRE_VERSION="$(NGINX_PCRE_VERSION)" \
 		--build-arg PCRE_HASH="$(NGINX_PCRE_HASH)" \
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
-	docker save "$(NAME)/nginx" -o "$@"
+	docker save "$(REGISTRY)/nginx" -o "$@"
 
 ## Tools
 
