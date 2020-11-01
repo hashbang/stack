@@ -59,7 +59,8 @@ endif
 registry-push: registry images/stack-shell.tar images/nginx.tar
 ifeq ($(BACKEND),local)
 	$(contain) bash -c " \
-		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx \
+		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx; \
+		docker load -i images/gitea.tar && docker push $(REGISTRY)/gitea; \
 	"
 endif
 
@@ -146,6 +147,19 @@ images/nginx.tar: src/nginx images/stack-base.tar
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/nginx" -o "$@"
+
+images/gitea.tar: src/gitea images/stack-go.tar
+	docker load -i images/stack-go.tar
+	docker build \
+		--tag $(REGISTRY)/gitea \
+		--cache-from $(REGISTRY)/stack-go \
+		--build-arg FROM=$(REGISTRY)/stack-go \
+		--build-arg REF="$(GITEA_REF)" \
+		--build-arg URL="$(GITEA_URL)" \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(REGISTRY)/gitea" -o "$@"
+
 
 ## Tools
 
