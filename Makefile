@@ -9,7 +9,7 @@ GIT_DATETIME := \
         $(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S' config.env)
 .DEFAULT_GOAL := all
 -include $(PWD)/config.env
-export PATH := $(PWD)/bin:$(PATH)
+export PATH := $(PWD)/tools:$(PATH)
 
 ## Primary Targets
 
@@ -18,7 +18,7 @@ all: stack
 
 .PHONY: clean
 clean: clean-stack
-	rm -rf bin
+	rm -rf tools/*
 	rm -rf images/*.tar
 
 .PHONY: clean-stack
@@ -95,7 +95,7 @@ contain := \
 
 ## Images
 
-images/stack-base.tar: src/stack-base
+images/stack-base.tar: images/stack-base
 	docker build \
 		--tag $(REGISTRY)/stack-base \
 		--build-arg DEBIAN_IMAGE_HASH \
@@ -103,7 +103,7 @@ images/stack-base.tar: src/stack-base
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/stack-base" -o "$@"
 
-images/stack-go.tar: src/stack-go images/stack-base.tar
+images/stack-go.tar: images/stack-go images/stack-base.tar
 	docker load -i images/stack-base.tar
 	docker build \
 		--tag $(REGISTRY)/stack-go \
@@ -113,7 +113,7 @@ images/stack-go.tar: src/stack-go images/stack-base.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/stack-go" -o "$@"
 
-images/stack-shell.tar: src/stack-shell images/stack-base.tar
+images/stack-shell.tar: images/stack-shell images/stack-base.tar
 	docker load -i images/stack-base.tar
 	docker build \
 		--tag $(REGISTRY)/stack-shell \
@@ -123,7 +123,7 @@ images/stack-shell.tar: src/stack-shell images/stack-base.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/stack-shell" -o "$@"
 
-images/docker-registry.tar: src/docker-registry images/stack-go.tar
+images/docker-registry.tar: images/docker-registry images/stack-go.tar
 	docker load -i images/stack-go.tar
 	docker build \
 		--tag $(REGISTRY)/registry \
@@ -135,7 +135,7 @@ images/docker-registry.tar: src/docker-registry images/stack-go.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/registry" -o "$@"
 
-images/nginx.tar: src/nginx images/stack-base.tar
+images/nginx.tar: images/nginx images/stack-base.tar
 	docker load -i images/stack-base.tar
 	docker build \
 		--tag $(REGISTRY)/nginx \
@@ -148,7 +148,7 @@ images/nginx.tar: src/nginx images/stack-base.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/nginx" -o "$@"
 
-images/gitea.tar: src/gitea images/stack-go.tar
+images/gitea.tar: images/gitea images/stack-go.tar
 	docker load -i images/stack-go.tar
 	docker build \
 		--tag $(REGISTRY)/gitea \
@@ -164,37 +164,37 @@ images/gitea.tar: src/gitea images/stack-go.tar
 ## Tools
 
 .PHONY: tools
-tools: bin/k3s bin/k3d bin/k9s bin/sops bin/ksops-exec bin/kubectl bin/terraform
+tools: tools/k3s tools/k3d tools/k9s tools/sops tools/ksops-exec tools/kubectl tools/terraform tools/terraform-provider-kustomization
 
-bin/k3s: images/stack-go.tar
+tools/k3s: images/stack-go.tar
 	$(eval CMD="mkdir -p build/data && ./scripts/download && go generate && make && cp dist/artifacts/k3s ../out/")
 	$(call build,k3s,"$(K3S_URL)","$(K3S_REF)","$(CMD)")
 
-bin/k3d: images/stack-go.tar
-	$(eval CMD="make build && cp bin/k3d ../out/")
+tools/k3d: images/stack-go.tar
+	$(eval CMD="make build && cp tools/k3d ../out/")
 	$(call build,k3d,"$(K3D_URL)","$(K3D_REF)","$(CMD)")
 
-bin/k9s: images/stack-go.tar
+tools/k9s: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/k9s")
 	$(call build,k9s,"$(K9S_URL)","$(K9S_REF)","$(CMD)")
 
-bin/sops: images/stack-go.tar
+tools/sops: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/sops $(SOPS_PKG)")
 	$(call build,sops,"$(SOPS_URL)","$(SOPS_REF)","$(CMD)")
 
-bin/ksops-exec: images/stack-go.tar
+tools/ksops-exec: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/ksops-exec")
 	$(call build,ksops,"$(KSOPS_URL)","$(KSOPS_REF)","$(CMD)")
 
-bin/kubectl: images/stack-go.tar
+tools/kubectl: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/kubectl $(KUBECTL_PKG)")
 	$(call build,kubectl,"$(KUBECTL_URL)","$(KUBECTL_REF)","$(CMD)")
 
-bin/terraform: images/stack-go.tar
+tools/terraform: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform $(TERRAFORM_PKG)")
 	$(call build,terraform,"$(TERRAFORM_URL)","$(TERRAFORM_REF)","$(CMD)")
 
-bin/terraform-provider-kustomization: images/stack-go.tar
+tools/terraform-provider-kustomization: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform-provider-kustomization")
 	$(call build,terraform-provider-kustomization,"$(TERRAFORM_KUSTOMIZATION_URL)","$(TERRAFORM_KUSTOMIZATION_REF)","$(CMD)")
 
@@ -217,8 +217,8 @@ define build
 		--privileged \
 		--user root \
 		-v $(PWD)/.cache/$(1):/home/build/src \
-		-v $(PWD)/bin/:/home/build/out \
+		-v $(PWD)/tools/:/home/build/out \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		"$(REGISTRY)/stack-go" \
-	&& chmod +x $(PWD)/bin/*
+	&& chmod +x $(PWD)/tools/*
 endef
