@@ -194,6 +194,10 @@ bin/terraform: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform $(TERRAFORM_PKG)")
 	$(call build,terraform,"$(TERRAFORM_URL)","$(TERRAFORM_REF)","$(CMD)")
 
+bin/terraform-provider-kustomization: images/stack-go.tar
+	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform-provider-kustomization")
+	$(call build,terraform-provider-kustomization,"$(TERRAFORM_KUSTOMIZATION_URL)","$(TERRAFORM_KUSTOMIZATION_REF)","$(CMD)")
+
 # Make Helpers
 
 ## Note: --user root, privileged, and the docker socket are all required as
@@ -215,6 +219,6 @@ define build
 		-v $(PWD)/.cache/$(1):/home/build/src \
 		-v $(PWD)/bin/:/home/build/out \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		"$(NAME)/stack-go" \
+		"$(REGISTRY)/stack-go" \
 	&& chmod +x $(PWD)/bin/*
 endef
