@@ -40,7 +40,7 @@ RUN mkdir -p /home/build/rootfs/etc \
     && echo "nogroup:*:100:nobody" > /home/build/rootfs/etc/group \
     && echo "nobody:*:100:100:::" > /home/build/rootfs/etc/passwd \
     && mkdir /home/build/rootfs/tmp \
-    && touch /home/build/rootfs/tmp/.keep \
+    && touch /home/build/rootfs/tmp/.keep
 ADD nginx.conf /home/build/rootfs/
 
 # Create bare minimum output image

@@ -4,11 +4,11 @@ NAME := hashbang
 ifeq ($(BACKEND),local)
 REGISTRY := registry.localhost:5000
 endif
-GIT_EPOCH := $(shell git log -1 --format=%at config.env)
+GIT_EPOCH := $(shell git log -1 --format=%at config/config.env)
 GIT_DATETIME := \
-        $(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S' config.env)
+	$(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S' config/config.env)
 .DEFAULT_GOAL := all
--include $(PWD)/config.env
+-include $(PWD)/config/config.env
 export PATH := $(PWD)/tools:$(PATH)
 
 ## Primary Targets
@@ -25,7 +25,7 @@ clean: clean-stack
 clean-stack:
 ifeq ($(BACKEND),local)
 	k3d cluster delete $(NAME) ||:
-	docker rm -f k3d-$(NAME)-registry ||:
+	docker rm -f registry.localhost ||:
 endif
 
 .PHONY: mrproper
@@ -39,14 +39,14 @@ mrproper: clean
 .PHONY: registry
 registry: images/docker-registry.tar
 ifeq ($(BACKEND),local)
-ifeq ($(shell docker ps -a | grep "k3d-$(NAME)-registry" >/dev/null; echo $$?),1)
+ifeq ($(shell docker ps | grep "registry.localhost" >/dev/null; echo $$?),1)
 	docker network create "k3d-$(NAME)" || :
 	docker volume create $(NAME)-registry
 	docker load -i images/docker-registry.tar
 	docker container run \
 		--detach \
-		--name "k3d-$(NAME)-registry" \
-		--hostname "registry.$(NAME).localhost" \
+		--name "registry.localhost" \
+		--hostname "registry.localhost" \
 		--network "k3d-$(NAME)" \
 		--volume $(NAME)-registry:/data \
 		--restart always \
@@ -67,7 +67,8 @@ endif
 .PHONY: stack
 stack: tools registry registry-push
 ifeq ($(BACKEND),local)
-	k3d cluster create $(NAME)
+	k3d cluster create $(NAME) \
+		--volume $(PWD)/config/registries.yaml:/etc/rancher/k3s/registries.yaml
 	k3d kubeconfig merge $(NAME) --switch-context
 endif
 
