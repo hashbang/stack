@@ -1,0 +1,8 @@
+tools/terraform-provider-kustomization filter=lfs diff=lfs merge=lfs -text
+tools/k3d filter=lfs diff=lfs merge=lfs -text
+tools/k3s filter=lfs diff=lfs merge=lfs -text
+tools/k9s filter=lfs diff=lfs merge=lfs -text
+tools/ksops-exec filter=lfs diff=lfs merge=lfs -text
+tools/kubectl filter=lfs diff=lfs merge=lfs -text
+tools/sops filter=lfs diff=lfs merge=lfs -text
+tools/terraform filter=lfs diff=lfs merge=lfs -text
