@@ -68,7 +68,8 @@ endif
 stack: tools registry registry-push
 ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME) \
-		--volume $(PWD)/config/registries.yaml:/etc/rancher/k3s/registries.yaml
+		--volume $(PWD)/config/registries.yaml:/etc/rancher/k3s/registries.yaml \
+		-p "8080:8080@loadbalancer" # health check
 	k3d kubeconfig merge $(NAME) --switch-context
 endif
 
