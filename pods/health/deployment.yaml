@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: health
-        image: registry.hashbang.localhost:5000/nginx:lastest
+        image: registry.localhost:5000/nginx:lastest
         ports:
         - containerPort: 8080

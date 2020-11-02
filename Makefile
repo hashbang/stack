@@ -2,7 +2,7 @@ default: all
 BACKEND := local
 NAME := hashbang
 ifeq ($(BACKEND),local)
-REGISTRY := registry.$(NAME).localhost:5000
+REGISTRY := registry.localhost:5000
 endif
 GIT_EPOCH := $(shell git log -1 --format=%at config.env)
 GIT_DATETIME := \
@@ -56,7 +56,7 @@ endif
 endif
 
 .PHONY: registry-push
-registry-push: registry images/stack-shell.tar images/nginx.tar
+registry-push: registry images/stack-shell.tar images/nginx.tar images/gitea.tar
 ifeq ($(BACKEND),local)
 	$(contain) bash -c " \
 		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx; \
@@ -171,7 +171,7 @@ tools/k3s: images/stack-go.tar
 	$(call build,k3s,"$(K3S_URL)","$(K3S_REF)","$(CMD)")
 
 tools/k3d: images/stack-go.tar
-	$(eval CMD="make build && cp tools/k3d ../out/")
+	$(eval CMD="make build && cp bin/k3d ../out/")
 	$(call build,k3d,"$(K3D_URL)","$(K3D_REF)","$(CMD)")
 
 tools/k9s: images/stack-go.tar
