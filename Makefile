@@ -69,8 +69,11 @@ stack: tools registry registry-push
 ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME) \
 		--volume $(PWD)/config/registries.yaml:/etc/rancher/k3s/registries.yaml \
-		-p "8080:8080@loadbalancer" # health check
+		-p "2321:8080@loadbalancer" \
+		-p "2322:8081@loadbalancer"
 	k3d kubeconfig merge $(NAME) --switch-context
+	kubectl kustomize pods/health | kubectl apply -f -
+	kubectl kustomize pods/gitea | kubectl apply -f -
 endif
 
 .PHONY: shell

@@ -1,0 +1,6 @@
+commonLabels:
+  app: health
+
+resources:
+- deployment.yaml
+- service.yaml

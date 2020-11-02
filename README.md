@@ -62,8 +62,10 @@ this repository.
 
 ## Services
 
- * Nginx health check
- * Gitea
+  | Name    | Development           | Staging | Production | Next |
+  |---------|:---------------------:|:-------:|:----------:|:----:|
+  | health  | http://localhost:2321 | N/A     | N/A        | N/A  |
+  | gitea   | http://localhost:2322 | N/A     | N/A        | N/A  |
 
 ## Support ##
 
