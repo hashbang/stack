@@ -161,6 +161,9 @@ images/gitea.tar: images/gitea images/stack-go.tar
 		--build-arg FROM=$(REGISTRY)/stack-go \
 		--build-arg REF="$(GITEA_REF)" \
 		--build-arg URL="$(GITEA_URL)" \
+		--build-arg GIT_REF="$(GITEA_GIT_REF)" \
+		--build-arg GIT_URL="$(GITEA_GIT_URL)" \
+		$<
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/gitea" -o "$@"
@@ -202,6 +205,18 @@ tools/terraform: images/stack-go.tar
 tools/terraform-provider-kustomization: images/stack-go.tar
 	$(eval CMD="go build -v -trimpath -ldflags='-w' -o ~/out/terraform-provider-kustomization")
 	$(call build,terraform-provider-kustomization,"$(TERRAFORM_KUSTOMIZATION_URL)","$(TERRAFORM_KUSTOMIZATION_REF)","$(CMD)")
+
+## Maintaince
+
+.PHONY: update-base
+update-base:
+	docker run \
+		--tty \
+		--volume $(PWD)/images/stack-base/files/usr/local/bin/:/usr/local/bin/ \
+		--volume $(PWD)/images/stack-base/files/etc/apt/packages.list:/etc/apt/packages.list \
+		--volume $(PWD)/images/stack-base/files/etc/apt/sources.list:/etc/apt/sources.list \
+		debian:buster \
+		/usr/local/bin/update-packages
 
 # Make Helpers
 
