@@ -153,17 +153,28 @@ images/nginx.tar: images/nginx images/stack-base.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/nginx" -o "$@"
 
-images/gitea.tar: images/gitea images/stack-go.tar
+images/git.tar: images/git images/stack-base.tar
+	docker load -i images/stack-base.tar
+	docker build \
+		--tag $(REGISTRY)/git \
+		--cache-from $(REGISTRY)/stack-base \
+		--build-arg FROM=$(REGISTRY)/stack-base \
+		--build-arg REF="$(GIT_REF)" \
+		--build-arg URL="$(GIT_URL)" \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(REGISTRY)/git" -o "$@"
+
+images/gitea.tar: images/gitea images/stack-go.tar images/git.tar
 	docker load -i images/stack-go.tar
+	docker load -i images/git.tar
 	docker build \
 		--tag $(REGISTRY)/gitea \
 		--cache-from $(REGISTRY)/stack-go \
-		--build-arg FROM=$(REGISTRY)/stack-go \
+		--build-arg GIT_FROM=$(REGISTRY)/git \
+		--build-arg BUILD_FROM=$(REGISTRY)/stack-go \
 		--build-arg REF="$(GITEA_REF)" \
 		--build-arg URL="$(GITEA_URL)" \
-		--build-arg GIT_REF="$(GITEA_GIT_REF)" \
-		--build-arg GIT_URL="$(GITEA_GIT_URL)" \
-		$<
 		$<
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/gitea" -o "$@"

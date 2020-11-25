@@ -16,4 +16,4 @@ spec:
       - name: gitea
         image: registry.localhost:5000/gitea
         ports:
-        - containerPort: 8080
+        - containerPort: 3000
