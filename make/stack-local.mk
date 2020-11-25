@@ -1,9 +1,7 @@
 .PHONY: clean-stack
 clean-stack:
-ifeq ($(BACKEND),local)
 	k3d cluster delete $(NAME) ||:
 	docker rm -f registry.localhost ||:
-endif
 
 .PHONY: clean-stack-mrproper
 	docker network rm "$(NAME)" ||:
@@ -13,7 +11,6 @@ endif
 
 .PHONY: stack
 stack: tools registry registry-push
-ifeq ($(BACKEND),local)
 	k3d cluster create $(NAME) \
 		--volume $(PWD)/config/registries.yaml:/etc/rancher/k3s/registries.yaml \
 		-p "2321:8080@loadbalancer" \
@@ -21,11 +18,9 @@ ifeq ($(BACKEND),local)
 	k3d kubeconfig merge $(NAME) --switch-context
 	kubectl kustomize pods/health | kubectl apply -f -
 	kubectl kustomize pods/gitea | kubectl apply -f -
-endif
 
 .PHONY: registry
 registry: images/docker-registry.tar
-ifeq ($(BACKEND),local)
 ifeq ($(shell docker ps | grep "registry.localhost" >/dev/null; echo $$?),1)
 	docker network create "k3d-$(NAME)" || :
 	docker volume create $(NAME)-registry
@@ -40,16 +35,13 @@ ifeq ($(shell docker ps | grep "registry.localhost" >/dev/null; echo $$?),1)
 		-p 5000:5000 \
 		$(REGISTRY)/registry
 endif
-endif
 
 .PHONY: registry-push
 registry-push: registry images/stack-shell.tar images/nginx.tar images/gitea.tar
-ifeq ($(BACKEND),local)
 	$(contain) bash -c " \
 		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx; \
 		docker load -i images/gitea.tar && docker push $(REGISTRY)/gitea; \
 	"
-endif
 
 .PHONY: shell
 shell: tools images/stack-shell.tar

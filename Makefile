@@ -1,18 +1,19 @@
-default: all
-BACKEND := local
 NAME := hashbang
-ifeq ($(BACKEND),local)
-REGISTRY := registry.localhost:5000
-endif
-GIT_EPOCH := $(shell git log -1 --format=%at config/config.env)
-GIT_DATETIME := \
-	$(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S' config/config.env)
-.DEFAULT_GOAL := all
-
-include $(PWD)/make/*.mk
-include $(PWD)/config/config.env
+BACKEND := local
 
 export PATH := $(PWD)/tools:$(PATH)
+
+include $(PWD)/config/config.env
+include $(PWD)/make/images.mk
+include $(PWD)/make/tools.mk
+
+ifeq ($(BACKEND),local)
+REGISTRY := registry.localhost:5000
+include $(PWD)/make/stack-local.mk
+endif
+
+.DEFAULT_GOAL := all
+default: all
 
 .PHONY: all
 all: stack
