@@ -9,8 +9,7 @@ GIT_DATETIME := \
 	$(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S' config/config.env)
 .DEFAULT_GOAL := all
 
-include $(PWD)/images/build.mk
-include $(PWD)/tools/build.mk
+include $(PWD)/make/*.mk
 include $(PWD)/config/config.env
 
 export PATH := $(PWD)/tools:$(PATH)
