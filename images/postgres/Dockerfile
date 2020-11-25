@@ -25,7 +25,6 @@ RUN mkdir -p \
 	&& cp /lib/x86_64-linux-gnu/libm.so.6 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib/x86_64-linux-gnu/libc.so.6 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64 \
-	&& cp /bin/sh ~/rootfs/bin/sh \
     && cp -a ~/out/. ~/rootfs/ \
     && chmod -R 700 ~/rootfs/data/ \
     && PGDATA=~/rootfs/data/ ~/rootfs/bin/pg_ctl initdb \
