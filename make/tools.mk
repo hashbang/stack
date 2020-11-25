@@ -1,3 +1,7 @@
+#TODO: Figure out how to dynamically generate this list
+.PHONY: tools
+tools: tools/k3s tools/k3d tools/k9s tools/sops tools/ksops-exec tools/kubectl tools/terraform tools/terraform-provider-kustomization
+
 tools/k3s: images/stack-go.tar
 	$(eval CMD="mkdir -p build/data && ./scripts/download && go generate && make && cp dist/artifacts/k3s ../out/")
 	$(call build,k3s,"$(K3S_URL)","$(K3S_REF)","$(CMD)")
