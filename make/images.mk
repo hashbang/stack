@@ -73,6 +73,18 @@ images/git.tar: images/git images/stack-base.tar
 	#'--output type=tar,dest=$@' should work, but is broken
 	docker save "$(REGISTRY)/git" -o "$@"
 
+images/postgres.tar: images/postgres images/stack-base.tar
+	docker load -i images/stack-base.tar
+	docker build \
+		--cache-from $(REGISTRY)/stack-base \
+		--build-arg FROM=$(REGISTRY)/stack-base \
+		--build-arg REF="$(POSTGRES_REF)" \
+		--build-arg URL="$(POSTGRES_URL)" \
+		--tag $(REGISTRY)/postgres \
+		$<
+	#'--output type=tar,dest=$@' should work, but is broken
+	docker save "$(REGISTRY)/git" -o "$@"
+
 images/gitea.tar: images/gitea images/stack-go.tar images/git.tar
 	docker load -i images/stack-go.tar
 	docker load -i images/git.tar

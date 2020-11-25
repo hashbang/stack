@@ -1,4 +1,5 @@
-
+flex=2.6.4-6.2
+bison=2:3.3.2.dfsg-1
 musl-tools=1.1.21-2
 adduser=3.118
 apt=1.8.2.1
@@ -204,6 +205,7 @@ libpython2.7-minimal:amd64=2.7.16-2+deb10u1
 libpython2.7-stdlib:amd64=2.7.16-2+deb10u1
 libquadmath0:amd64=8.3.0-6
 libreadline7:amd64=7.0-5
+libreadline-dev:amd64=7.0-5
 librtmp1:amd64=2.4+20151223.gitfa8646d.1-2
 libsasl2-2:amd64=2.1.27+dfsg-1+deb10u1
 libsasl2-modules:amd64=2.1.27+dfsg-1+deb10u1
