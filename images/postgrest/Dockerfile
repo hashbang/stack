@@ -20,7 +20,7 @@ RUN mkdir -p \
     && echo "nobody:x:100" > ~/rootfs/etc/group \
     && echo "nobody:x:100:100:nobody:/:/usr/bin/nologin" > ~/rootfs/etc/passwd \
     && cp -a ~/out/postgrest ~/rootfs/ \
-    && cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64/x86_64-linux-gnu \
+    && cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64/ \
     && cp /lib/x86_64-linux-gnu/libm.so.6 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libz.so.1 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libpthread.so.0 ~/rootfs/lib/x86_64-linux-gnu \
