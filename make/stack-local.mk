@@ -41,6 +41,7 @@ registry-push: registry images/stack-shell.tar images/nginx.tar images/gitea.tar
 	$(contain) bash -c " \
 		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx; \
 		docker load -i images/gitea.tar && docker push $(REGISTRY)/gitea; \
+		docker load -i images/postgres.tar && docker push $(REGISTRY)/postgres; \
 	"
 
 .PHONY: shell
