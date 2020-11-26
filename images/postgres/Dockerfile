@@ -19,11 +19,15 @@ RUN mkdir -p \
         ~/rootfs/tmp \
     && echo "nobody:x:100" > ~/rootfs/etc/group \
     && echo "nobody:x:100:100:nobody:/:/usr/bin/nologin" > ~/rootfs/etc/passwd \
+    && cp /etc/nsswitch.conf ~/rootfs/etc \
+    && cp /lib/x86_64-linux-gnu/libreadline.so.7 ~/rootfs/lib/x86_64-linux-gnu \
+    && cp /lib/x86_64-linux-gnu/libtinfo.so.6 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libpthread.so.0 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib/x86_64-linux-gnu/librt.so.1 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib/x86_64-linux-gnu/libdl.so.2 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib/x86_64-linux-gnu/libm.so.6 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib/x86_64-linux-gnu/libc.so.6 ~/rootfs/lib/x86_64-linux-gnu \
+	&& cp /lib/x86_64-linux-gnu/libnss_files.so.2 ~/rootfs/lib/x86_64-linux-gnu \
 	&& cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64 \
     && cp -a ~/out/. ~/rootfs/ \
     && chmod -R 700 ~/rootfs/data/ \
