@@ -17,9 +17,12 @@ RUN mkdir -p \
         ~/rootfs/data \
         ~/rootfs/bin \
         ~/rootfs/tmp \
+        ~/rootfs/usr/lib/locale \
     && echo "nobody:x:100" > ~/rootfs/etc/group \
     && echo "nobody:x:100:100:nobody:/:/usr/bin/nologin" > ~/rootfs/etc/passwd \
-    && cp /etc/nsswitch.conf ~/rootfs/etc \
+    && echo "en_US.UTF-8 UTF-8" > ~/rootfs/etc/locale.gen \
+    && cp -a /usr/lib/locale/. ~/rootfs/usr/lib/locale/ \
+    && cp /lib/x86_64-linux-gnu/libreadline.so.7 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libreadline.so.7 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libtinfo.so.6 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libpthread.so.0 ~/rootfs/lib/x86_64-linux-gnu \
@@ -31,7 +34,7 @@ RUN mkdir -p \
 	&& cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64 \
     && cp -a ~/out/. ~/rootfs/ \
     && chmod -R 700 ~/rootfs/data/ \
-    && PGDATA=~/rootfs/data/ ~/rootfs/bin/pg_ctl initdb \
+    && PGDATA=~/rootfs/data/ ~/rootfs/bin/initdb -U nobody \
     && echo "listen_addresses='*'" > ~/rootfs/data/postgresql.conf
 
 FROM scratch
