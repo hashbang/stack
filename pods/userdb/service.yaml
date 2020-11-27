@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: userdb-api
+  labels:
+    app: userdb-api
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  selector:
+    app: userdb-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: userdb-db-write
+  labels:
+    app: userdb-db-write
+spec:
+  ports:
+  - name: tcp
+    port: 5432
+    targetPort: tcp
+  selector:
+    app: userdb-db-read

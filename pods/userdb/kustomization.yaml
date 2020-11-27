@@ -1,0 +1,7 @@
+commonLabels:
+  app: userdb
+
+resources:
+- deployment.yaml
+- service.yaml
+- secrets.yaml
