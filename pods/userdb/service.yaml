@@ -4,14 +4,14 @@ kind: Service
 metadata:
   name: userdb-api
   labels:
-    app: userdb-api
+    app: userdb
 spec:
   ports:
   - name: http
     port: 80
     targetPort: http
   selector:
-    app: userdb-api
+    app: userdb
 
 ---
 apiVersion: v1
@@ -19,7 +19,7 @@ kind: Service
 metadata:
   name: userdb-db-write
   labels:
-    app: userdb-db-write
+    app: userdb
 spec:
   ports:
   - name: tcp

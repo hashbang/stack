@@ -1,7 +1,10 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: userdb-db-write
+  labels:
+    app: userdb
 spec:
   replicas: 1
   selector:
@@ -12,6 +15,12 @@ spec:
       labels:
         deployment: userdb-db-write
     spec:
+      volumes:
+      - name: userdb-data
+        persistentVolumeClaim:
+          claimName: userdb-data
+      securityContext:
+        fsGroup: 100
       containers:
       - name: postgres
         image: registry.localhost:5000/postgres
@@ -25,14 +34,17 @@ spec:
         - name: PGPASSWORD
           valueFrom:
             secretKeyRef:
-              name: userdb-data
+              name: userdb-db-write
               key: password
 
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: userdb-api
+  labels:
+    app: userdb
 spec:
   replicas: 3
   selector:
@@ -51,9 +63,9 @@ spec:
           containerPort: 3000
         env:
         - name: PGRST_SERVER_PORT
-          value: 3000
+          value: '3000'
         - name: PGPORT
-          value: 5432
+          value: '5432'
         - name: PGHOST
           value: userdb-db-write
         - name: PGDATABASE
@@ -67,3 +79,62 @@ spec:
               key: password
         - name: PGRST_DB_URL
           value: postgresql://$(PGDATABASE)?host=$(PGHOST)&user=$(PGUSER)
+
+#---
+#
+#apiVersion: v1
+#kind: Pod
+#metadata:
+#  name: userdb-init
+#  labels:
+#    app: userdb
+#spec:
+#  volumes:
+#  - name: userdb-data
+#    persistentVolumeClaim:
+#      claimName: userdb-data
+#  containers:
+#  - name: userdb-init
+#    image: debian:buster
+#    volumeMounts:
+#    - mountPath: /data
+#      name: userdb-data
+#    command: ["/bin/sh"]
+#    args: ["-c","chown -R 100:100 /data; ls -lah /data;"]
+#  restartPolicy: Never
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: userdb-data
+  labels:
+    app: userdb
+spec:
+  storageClassName: ""
+  volumeName: userdb-data
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: userdb-data
+  labels:
+    app: userdb
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  claimRef:
+    name: userdb-data
+  hostPath:
+    path: /volumes/userdb-data
