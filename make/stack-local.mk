@@ -39,9 +39,11 @@ endif
 .PHONY: registry-push
 registry-push: registry images/stack-shell.tar images/nginx.tar images/gitea.tar
 	$(contain) bash -c " \
+		docker load -i images/stack-base.tar && docker push $(REGISTRY)/stack-base; \
 		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx; \
 		docker load -i images/gitea.tar && docker push $(REGISTRY)/gitea; \
 		docker load -i images/postgres.tar && docker push $(REGISTRY)/postgres; \
+		docker load -i images/postgrest.tar && docker push $(REGISTRY)/postgrest; \
 	"
 
 .PHONY: shell

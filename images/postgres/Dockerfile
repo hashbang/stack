@@ -33,6 +33,7 @@ RUN mkdir -p \
     && cp /lib/x86_64-linux-gnu/libc.so.6 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib/x86_64-linux-gnu/libnss_files.so.2 ~/rootfs/lib/x86_64-linux-gnu \
     && cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64 \
+    && cp /bin/sh ~/rootfs/bin \
     && cp -a ~/out/. ~/rootfs/ \
     && chmod -R 700 ~/rootfs/data/ \
     && echo "listen_addresses='*'" > ~/rootfs/config/postgresql.conf \

@@ -1,4 +1,3 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,12 +14,46 @@ spec:
       labels:
         deployment: userdb-db-write
     spec:
-      volumes:
-      - name: userdb-data
-        persistentVolumeClaim:
-          claimName: userdb-data
-      securityContext:
-        fsGroup: 100
+      initContainers:
+      - name: userdb-init-schema
+        image: registry.localhost:5000/stack-base
+        volumeMounts:
+        - name: userdb-data
+          mountPath: /data
+        - name: userdb-schema
+          mountPath: /schema
+        command: ["/bin/sh", "-c"]
+        args:
+          - set -e;
+            [ -z "$(ls -A /schema)" ] || exit 0;
+            git clone https://github.com/hashbang/userdb.git;
+            cd userdb;
+            make build;
+            cat out/* > /schema/bundle.sql;
+            chown -R 100:100 /schema;
+            chown -R 100:100 /data;
+            chmod 700 /data;
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+      - name: userdb-init-createdb
+        image: registry.localhost:5000/postgres
+        volumeMounts:
+        - name: userdb-data
+          mountPath: /data
+        - name: userdb-schema
+          mountPath: /schema
+        command: ["/bin/sh", "-c"]
+        args:
+          - set -e;
+            [ -z "$(ls -A /data )" ] || exit 0;
+            initdb /data;
+            echo 'create database userdb;' > /tmp/createdb.sql;
+            postgres --single -Ej "postgres" < /tmp/createdb.sql;
+            postgres --single -Ej "userdb" < /schema/bundle.sql;
+        securityContext:
+          runAsUser: 100
+          runAsGroup: 100
       containers:
       - name: postgres
         image: registry.localhost:5000/postgres
@@ -30,12 +63,21 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: userdb-data
+        volumeMounts:
+        - mountPath: /schema
+          name: userdb-schema
         env:
         - name: PGPASSWORD
           valueFrom:
             secretKeyRef:
               name: userdb-db-write
               key: password
+      volumes:
+      - name: userdb-schema
+        emptyDir: {}
+      - name: userdb-data
+        persistentVolumeClaim:
+          claimName: userdb-data
 
 ---
 
@@ -79,62 +121,3 @@ spec:
               key: password
         - name: PGRST_DB_URL
           value: postgresql://$(PGDATABASE)?host=$(PGHOST)&user=$(PGUSER)
-
-#---
-#
-#apiVersion: v1
-#kind: Pod
-#metadata:
-#  name: userdb-init
-#  labels:
-#    app: userdb
-#spec:
-#  volumes:
-#  - name: userdb-data
-#    persistentVolumeClaim:
-#      claimName: userdb-data
-#  containers:
-#  - name: userdb-init
-#    image: debian:buster
-#    volumeMounts:
-#    - mountPath: /data
-#      name: userdb-data
-#    command: ["/bin/sh"]
-#    args: ["-c","chown -R 100:100 /data; ls -lah /data;"]
-#  restartPolicy: Never
-
----
-
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: userdb-data
-  labels:
-    app: userdb
-spec:
-  storageClassName: ""
-  volumeName: userdb-data
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-
----
-
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: userdb-data
-  labels:
-    app: userdb
-spec:
-  storageClassName: ""
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteMany
-  claimRef:
-    name: userdb-data
-  hostPath:
-    path: /volumes/userdb-data
