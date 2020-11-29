@@ -12,6 +12,8 @@ ADD files /
 
 RUN apt-install
 
+RUN apt update && apt-get -y -t buster-backports install "npm"
+
 RUN enable-faketime
 
 RUN useradd -ms /bin/bash build
