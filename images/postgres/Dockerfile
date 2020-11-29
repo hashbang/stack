@@ -35,15 +35,13 @@ RUN mkdir -p \
     && cp /lib64/ld-linux-x86-64.so.2 ~/rootfs/lib64 \
     && cp /bin/sh ~/rootfs/bin \
     && cp -a ~/out/. ~/rootfs/ \
-    && chmod -R 700 ~/rootfs/data/ \
-    && echo "listen_addresses='*'" > ~/rootfs/config/postgresql.conf \
-    && echo "data_directory='/data'" >> ~/rootfs/config/postgresql.conf
+    && chmod -R 700 ~/rootfs/data/
 
 FROM scratch
 COPY --from=build --chown=100:100 /home/build/rootfs /
 STOPSIGNAL SIGQUIT
 EXPOSE 5432
 USER 100:100
-ENV PGDATA=/config
+ENV PGDATA=/data
 ENV PATH=/bin
 ENTRYPOINT ["/bin/postgres"]

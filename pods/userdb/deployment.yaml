@@ -46,14 +46,13 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
           - set -e;
-            [ -z "$(ls -A /data )" ] || exit 0;
+            [ -f "/data/PG_VERSION" ] && exit 0;
             initdb /data;
+            postgres &
+            until pg_isready >/dev/null 2>&1; do true; done;
             echo 'create database userdb;' > /tmp/createdb.sql;
-            postgres --single -Ej "postgres" < /tmp/createdb.sql;
-            postgres --single -Ej "userdb" < /schema/bundle.sql;
-        securityContext:
-          runAsUser: 100
-          runAsGroup: 100
+            psql -d "postgres" < /tmp/createdb.sql;
+            psql -d "userdb" < /schema/bundle.sql;
       containers:
       - name: postgres
         image: registry.localhost:5000/postgres
@@ -61,11 +60,10 @@ spec:
         - name: tcp
           containerPort: 5432
         volumeMounts:
-        - mountPath: /data
-          name: userdb-data
-        volumeMounts:
-        - mountPath: /schema
-          name: userdb-schema
+        - name: userdb-data
+          mountPath: /data
+        - name: userdb-schema
+          mountPath: /schema
         env:
         - name: PGPASSWORD
           valueFrom:
