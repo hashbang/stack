@@ -5,7 +5,7 @@ update-base:
 		--volume $(PWD)/images/stack-base/files/usr/local/bin/:/usr/local/bin/ \
 		--volume $(PWD)/images/stack-base/files/etc/apt/packages.list:/etc/apt/packages.list \
 		--volume $(PWD)/images/stack-base/files/etc/apt/sources.list:/etc/apt/sources.list \
-		debian:buster \
+		debian:buster@sha256:$(DEBIAN_IMAGE_HASH) \
 		/usr/local/bin/update-packages
 
 images/stack-base.tar: images/stack-base
