@@ -5,7 +5,7 @@ uid=${UID?}
 gid=${GID?}
 user=${USER:-"build"}
 export HOME="/home/${user}"
-export PATH="/home/${user}/.local/bin:$PATH"
+export PATH="/home/${user}/.local/bin:/home/${user}/tools:$PATH"
 
 groupdel docker
 userdel "${user}" >/dev/null 2>&1 ||:

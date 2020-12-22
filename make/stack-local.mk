@@ -36,8 +36,8 @@ ifeq ($(shell docker ps | grep "registry.localhost" >/dev/null; echo $$?),1)
 		$(REGISTRY)/registry
 endif
 
-.PHONY: registry-push
-registry-push: registry images/stack-shell.tar images/nginx.tar images/gitea.tar
+.PHONY: registry-push images/stack-shell.tar
+registry-push: registry images/stack-shell.tar images/nginx.tar images/gitea.tar images/postgrest.tar images/postgres.tar
 	$(contain) bash -c " \
 		docker load -i images/stack-base.tar && docker push $(REGISTRY)/stack-base; \
 		docker load -i images/nginx.tar && docker push $(REGISTRY)/nginx; \
