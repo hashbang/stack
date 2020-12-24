@@ -107,10 +107,10 @@ spec:
         - name: PGPORT
           value: '5432'
         - name: PGHOST
-          value: userdb-db-write
+          value: userdb-db-write.default.svc.cluster.local
         - name: PGDATABASE
           value: userdb
-        - name: PGDATABASE
+        - name: PGUSER
           value: userdb
         - name: PGPASSWORD
           valueFrom:

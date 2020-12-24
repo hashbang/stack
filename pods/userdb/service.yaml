@@ -26,4 +26,4 @@ spec:
     port: 5432
     targetPort: tcp
   selector:
-    app: userdb-db-read
+    app: userdb-db-write
