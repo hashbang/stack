@@ -43,6 +43,7 @@ define build
 	docker run \
 		--interactive \
 		--tty \
+		--rm \
 		--env URL="$(2)" \
 		--env REF="$(3)" \
 		--env CMD="$(4)" \
